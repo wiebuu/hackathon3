@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,32 +13,55 @@ import { useToast } from '@/hooks/use-toast';
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+
   const [studentCredentials, setStudentCredentials] = useState({ email: '', password: '' });
   const [teacherCredentials, setTeacherCredentials] = useState({ email: '', password: '' });
 
-  const handleStudentLogin = (e: React.FormEvent) => {
+  // Firebase login function
+  const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Store user type in localStorage for demo
-    localStorage.setItem('userType', 'student');
-    localStorage.setItem('userName', 'Alex Johnson');
-    localStorage.setItem('studentId', 'ST2024001');
-    toast({
-      title: "Login Successful",
-      description: "Welcome back, Alex!",
-    });
-    navigate('/dashboard');
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, studentCredentials.email, studentCredentials.password);
+      const user = userCredential.user;
+
+      localStorage.setItem('userType', 'student');
+      localStorage.setItem('userName', user.displayName || studentCredentials.email);
+      localStorage.setItem('userEmail', user.email || studentCredentials.email);
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${user.displayName || studentCredentials.email}!`,
+      });
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast({
+        title: "Login Failed",
+        description: err.message || "Invalid credentials",
+      });
+    }
   };
 
-  const handleTeacherLogin = (e: React.FormEvent) => {
+  const handleTeacherLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('userType', 'teacher');
-    localStorage.setItem('userName', 'Dr. Sarah Wilson');
-    localStorage.setItem('teacherId', 'TCH2024001');
-    toast({
-      title: "Login Successful", 
-      description: "Welcome back, Dr. Wilson!",
-    });
-    navigate('/dashboard');
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, teacherCredentials.email, teacherCredentials.password);
+      const user = userCredential.user;
+
+      localStorage.setItem('userType', 'teacher');
+      localStorage.setItem('userName', user.displayName || teacherCredentials.email);
+      localStorage.setItem('userEmail', user.email || teacherCredentials.email);
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${user.displayName || teacherCredentials.email}!`,
+      });
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast({
+        title: "Login Failed",
+        description: err.message || "Invalid credentials",
+      });
+    }
   };
 
   return (
@@ -154,13 +179,21 @@ const Login = () => {
                 </TabsContent>
               </Tabs>
               
-              <div className="mt-8 text-center">
-                <div className="p-4 bg-muted/30 rounded-xl">
-                  <p className="text-sm text-muted-foreground font-[Poppins-Medium]">
-                    Demo credentials: any email/password combination works
-                  </p>
-                </div>
-              </div>
+              <div className="mt-8 text-center space-y-4">
+  <div>
+    <p className="text-sm text-muted-foreground font-[Poppins-Medium] mb-2">
+      Don't have an account?
+    </p>
+    <Button
+      variant="outline"
+      onClick={() => navigate('/signup')}
+      className="w-full btn-outline-modern text-lg py-3"
+    >
+      Sign Up
+    </Button>
+  </div>
+</div>
+
             </CardContent>
           </Card>
         </div>

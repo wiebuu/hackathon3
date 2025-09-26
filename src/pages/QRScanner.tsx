@@ -2,46 +2,61 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Camera, CheckCircle2, QrCode } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import QrScanner from 'react-qr-scanner'; // ✅ correct package
 
 const QRScanner = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isScanning, setIsScanning] = useState(false);
   const [isScanned, setIsScanned] = useState(false);
 
-  const handleScan = () => {
-    setIsScanning(true);
-    
-    // Simulate scanning process
-    setTimeout(() => {
-      setIsScanning(false);
+  const handleScan = (result: any) => {
+    if (result?.text && !isScanned) {
       setIsScanned(true);
-      
-      // Save attendance to localStorage for offline mode demo
-      const attendanceData = {
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toLocaleTimeString(),
-        status: 'present',
-        studentId: localStorage.getItem('studentId'),
-        studentName: localStorage.getItem('userName'),
-      };
-      
-      const existingAttendance = JSON.parse(localStorage.getItem('attendanceHistory') || '[]');
-      existingAttendance.push(attendanceData);
-      localStorage.setItem('attendanceHistory', JSON.stringify(existingAttendance));
-      
-      toast({
-        title: "Attendance Marked!",
-        description: "Your attendance has been recorded successfully.",
-      });
-      
-      // Redirect after 2 seconds
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-    }, 3000);
+
+      try {
+        // teacher's QR encodes lectureId & timestamp
+        const parsed = JSON.parse(result.text);
+
+        const attendanceData = {
+          date: new Date().toISOString().split('T')[0],
+          time: new Date().toLocaleTimeString(),
+          status: 'present',
+          studentId: localStorage.getItem('studentId'),
+          studentName: localStorage.getItem('userName'),
+          lectureId: parsed.lectureId,
+        };
+
+        // Save locally (demo mode)
+        const existing = JSON.parse(localStorage.getItem('attendanceHistory') || '[]');
+        existing.push(attendanceData);
+        localStorage.setItem('attendanceHistory', JSON.stringify(existing));
+
+        toast({
+          title: 'Attendance Marked!',
+          description: 'You have been marked present.',
+        });
+
+        setTimeout(() => navigate('/dashboard'), 2000);
+      } catch (err) {
+        toast({
+          title: 'Invalid QR Code',
+          description: 'This QR could not be processed.',
+          variant: 'destructive',
+        });
+        setIsScanned(false);
+      }
+    }
+  };
+
+  const handleError = (err: any) => {
+    console.error(err);
+    toast({
+      title: 'Camera Error',
+      description: 'Unable to access camera. Check permissions.',
+      variant: 'destructive',
+    });
   };
 
   if (isScanned) {
@@ -57,7 +72,7 @@ const QRScanner = () => {
                 Attendance Marked Successfully!
               </h2>
               <p className="text-muted-foreground text-lg">
-                You have been marked present for today's class.
+                You have been marked present for today&apos;s class.
               </p>
             </div>
             <div className="bg-gradient-card rounded-xl p-6 mb-8 shadow-medium">
@@ -96,7 +111,9 @@ const QRScanner = () => {
             <div className="p-2 bg-primary/10 rounded-lg">
               <QrCode className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="text-2xl font-[Poppins-Bold] text-gradient-primary">QR Code Scanner</h1>
+            <h1 className="text-2xl font-[Poppins-Bold] text-gradient-primary">
+              QR Code Scanner
+            </h1>
           </div>
         </div>
       </div>
@@ -116,68 +133,18 @@ const QRScanner = () => {
             </p>
           </CardHeader>
           <CardContent className="p-8 space-y-8">
-            {/* Camera Simulation */}
-            <div className="relative">
-              <div className="aspect-square bg-gradient-card rounded-2xl border-2 border-dashed border-border flex items-center justify-center shadow-medium">
-                {isScanning ? (
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent mx-auto mb-6 shadow-medium"></div>
-                    <p className="text-base font-medium text-foreground">Scanning...</p>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <div className="p-6 bg-primary/10 rounded-2xl inline-block mb-6">
-                      <Camera className="h-20 w-20 text-primary" />
-                    </div>
-                    <p className="text-base font-medium text-muted-foreground">Camera will appear here</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Scanning Frame Overlay */}
-              <div className="absolute inset-6 border-2 border-primary rounded-xl opacity-60">
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl"></div>
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-xl"></div>
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-xl"></div>
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl"></div>
-              </div>
+            {/* Real QR Scanner */}
+            <div className="relative rounded-xl overflow-hidden shadow-medium">
+              <QrScanner
+                delay={300}            // scan every 300ms
+                style={{ width: '100%' }}
+                onError={handleError}
+                onScan={handleScan}
+              />
             </div>
-
-            {/* Instructions */}
-            <div className="bg-gradient-card rounded-xl p-6 shadow-medium">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <div className="w-2 h-2 bg-primary rounded-full"></div>
-                Instructions:
-              </h3>
-              <ul className="text-sm text-muted-foreground space-y-3">
-                <li className="flex items-center gap-3">
-                  <div className="w-1 h-1 bg-primary rounded-full"></div>
-                  Position your device camera over the QR code
-                </li>
-                <li className="flex items-center gap-3">
-                  <div className="w-1 h-1 bg-primary rounded-full"></div>
-                  Keep the code within the scanning frame
-                </li>
-                <li className="flex items-center gap-3">
-                  <div className="w-1 h-1 bg-primary rounded-full"></div>
-                  Hold steady until scanning completes
-                </li>
-              </ul>
-            </div>
-
-            {/* Action Button */}
-            <Button
-              onClick={handleScan}
-              disabled={isScanning}
-              className="w-full btn-primary-modern text-lg py-4"
-              size="lg"
-            >
-              {isScanning ? 'Scanning...' : 'Start Scanning'}
-            </Button>
-
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                Demo mode: Scan simulation will complete automatically
+                Camera active: Hold QR in front of your device
               </p>
             </div>
           </CardContent>

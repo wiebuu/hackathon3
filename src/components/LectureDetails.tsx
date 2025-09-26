@@ -1,17 +1,11 @@
 // LectureDetails.tsx
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Users,
-  CheckCircle2,
-  XCircle,
-  ArrowLeft,
-  Eye,
-  Clock,
-} from 'lucide-react';
+import { Users, CheckCircle2, XCircle, ArrowLeft, Eye, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import QRCode from 'react-qr-code';
 
 interface Student {
   id: string;
@@ -26,34 +20,16 @@ const LectureDetails = () => {
   const { toast } = useToast();
   const lecture = state?.lecture;
 
-  const [students] = useState<Student[]>([
-    { id: 'ST2024001', name: 'Alex Johnson', status: 'present', time: '09:05 AM' },
-    { id: 'ST2024002', name: 'Sarah Williams', status: 'present', time: '09:02 AM' },
-    { id: 'ST2024003', name: 'Mike Chen', status: 'late', time: '09:08 AM' },
+  const [students, setStudents] = useState<Student[]>([
+    { id: 'ST2024001', name: 'Alex Johnson', status: 'absent' },
+    { id: 'ST2024002', name: 'Sarah Williams', status: 'absent' },
+    { id: 'ST2024003', name: 'Mike Chen', status: 'absent' },
     { id: 'ST2024004', name: 'Emma Davis', status: 'absent' },
     { id: 'ST2024005', name: 'David Brown', status: 'absent' },
   ]);
 
-  // Dummy QR state (just changes color every 7 seconds)
-  const [qrColor, setQrColor] = useState(generateRandomColor());
-
-  function generateRandomColor() {
-    const colors = ['#FF5733', '#33FF57', '#3357FF', '#FF33A8', '#F3FF33'];
-    return colors[Math.floor(Math.random() * colors.length)];
-  }
-
-  // Auto-change color every 7 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setQrColor(generateRandomColor());
-      toast({
-        title: 'QR Updated',
-        description: 'Dummy QR color changed',
-      });
-    }, 7000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // Generate QR code value (lecture ID + timestamp)
+  const qrValue = JSON.stringify({ lectureId: lecture?.id, timestamp: Date.now() });
 
   const getStatusBadge = (status: Student['status']) => {
     switch (status) {
@@ -68,9 +44,21 @@ const LectureDetails = () => {
     }
   };
 
+  const handleMarkAbsent = (id: string) => {
+    setStudents(prev =>
+      prev.map(student =>
+        student.id === id ? { ...student, status: 'absent', time: undefined } : student
+      )
+    );
+    toast({
+      title: 'Attendance Updated',
+      description: 'The student has been marked as absent.',
+    });
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-10 animate-fade-in font-sans">
-      {/* Top bar with back + lecture info */}
+      {/* Top Bar */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
@@ -114,19 +102,17 @@ const LectureDetails = () => {
         </Card>
       </div>
 
-      {/* Dummy QR + Attendance List */}
+      {/* QR Code Display */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-0 shadow-md">
-        <CardContent className="flex flex-col md:flex-row gap-10 p-8">
-          {/* Left: Dummy QR */}
-          <div className="flex flex-col justify-center items-center gap-6 md:w-1/3">
-            <div
-              className="w-80 h-80 rounded-2xl shadow-xl animate-pulse"
-              style={{ backgroundColor: qrColor }}
-            />
-            <p className="text-xs text-muted-foreground mt-2">Auto-refreshing every 7 seconds</p>
+        <CardContent className="flex flex-col md:flex-row gap-10 p-8 items-center justify-center">
+          <div className="flex flex-col justify-center items-center gap-6">
+            <QRCode value={qrValue} size={240} className="rounded-2xl shadow-xl" />
+            <p className="text-xs text-muted-foreground mt-2">
+              Students scan this QR using their login to mark attendance
+            </p>
           </div>
 
-          {/* Right: Real-time Attendance */}
+          {/* Right: Attendance List */}
           <div className="flex-1">
             <Card className="hover-lift">
               <CardHeader>
@@ -152,6 +138,14 @@ const LectureDetails = () => {
                           </span>
                         )}
                         {getStatusBadge(student.status)}
+                        {(student.status === 'present' || student.status === 'late') && (
+                          <button
+                            onClick={() => handleMarkAbsent(student.id)}
+                            className="text-destructive hover:text-red-600 p-1 rounded-full transition text-lg"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
