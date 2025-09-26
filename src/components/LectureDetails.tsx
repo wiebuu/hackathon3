@@ -49,8 +49,16 @@ const LectureDetails = () => {
 
   const fetchAttendance = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}api/attendance`);
-      const data = await res.json();
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/attendance`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
   
       if (Array.isArray(data)) {
         const fetchedStudents: Student[] = data.map((r: any) => ({
@@ -66,6 +74,7 @@ const LectureDetails = () => {
       console.error('Failed to fetch attendance:', err.message);
     }
   };
+  
   
 
   // Refresh QR and attendance every 5 seconds

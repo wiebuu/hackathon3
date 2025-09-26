@@ -13,60 +13,65 @@ const QRScanner = () => {
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
 
   const handleScan = async (result: any) => {
-    if (result?.text && !isScanned) {
-      setIsScanned(true);
+    if (!result?.text || isScanned) return;
   
+    setIsScanned(true);
+  
+    let studentId: string | null = null;
+    let studentName: string | null = null;
+  
+    try {
+      // Try parsing QR code as JSON
       try {
-        let studentId: string | null = null;
-        let studentName: string | null = null;
-  
-        // Try parsing JSON
-        try {
-          const parsed = JSON.parse(result.text);
-          if (parsed.studentId && parsed.studentName) {
-            studentId = parsed.studentId;
-            studentName = parsed.studentName;
-          } else {
-            throw new Error("Not a student QR");
-          }
-        } catch {
-          // Fallback: plain string QR
-          studentId = result.text;
-          studentName = localStorage.getItem('userName') || 'Student';
-        }
-  
-        if (!studentId || !studentName) throw new Error("Invalid QR code format");
-  
-        // Send attendance to backend
-        const response = await fetch(`${import.meta.env.VITE_API_URL}api/attendance`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ studentId, studentName }),
-        });
-  
-        const data = await response.json();
-  
-        if (data.success) {
-          toast({
-            title: 'Attendance Marked!',
-            description: `You have been marked present.`,
-          });
-  
-          // Show success briefly, then navigate back to dashboard
-          setTimeout(() => navigate('/dashboard'), 1500);
-  
+        const parsed = JSON.parse(result.text);
+        if (parsed.studentId && parsed.studentName) {
+          studentId = parsed.studentId;
+          studentName = parsed.studentName;
         } else {
-          throw new Error(data.message || "Failed to mark attendance");
+          throw new Error("QR code missing required fields");
         }
-      } catch (err: any) {
-        console.error(err);
-        toast({
-          title: 'Error',
-          description: err.message || 'Invalid QR code',
-          variant: 'destructive',
-        });
-        setIsScanned(false);
+      } catch {
+        // Fallback: treat QR as plain string (use localStorage for name)
+        studentId = result.text;
+        studentName = localStorage.getItem('userName') || 'Student';
       }
+  
+      if (!studentId || !studentName) throw new Error("Invalid QR code format");
+  
+      // Send attendance to backend
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, studentName }),
+      });
+  
+      // Check for HTTP errors
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Server error: ${response.status} ${text}`);
+      }
+  
+      const data = await response.json();
+  
+      if (data.success) {
+        toast({
+          title: 'Attendance Marked!',
+          description: `You have been marked present.`,
+        });
+  
+        // Navigate back after a short delay
+        setTimeout(() => navigate('/dashboard'), 1500);
+      } else {
+        throw new Error(data.message || "Failed to mark attendance");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: 'Error',
+        description: err.message || 'Invalid QR code or server error',
+        variant: 'destructive',
+      });
+      setIsScanned(false);
     }
   };
   
