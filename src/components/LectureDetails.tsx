@@ -61,6 +61,7 @@ const LectureDetails = () => {
       const data = await response.json();
   
       if (Array.isArray(data)) {
+        // Convert API rows into Student objects
         const fetchedStudents: Student[] = data.map((r: any) => ({
           id: r.studentId,
           name: r.studentName,
@@ -68,12 +69,21 @@ const LectureDetails = () => {
           time: r.time,
         }));
   
-        setStudents(fetchedStudents);
+        // Deduplicate: keep only the latest record per studentId
+        const uniqueStudents = Object.values(
+          fetchedStudents.reduce((acc: any, cur) => {
+            acc[cur.id] = cur; // overwrite older entries with latest one
+            return acc;
+          }, {})
+        ) as Student[];
+  
+        setStudents(uniqueStudents);
       }
     } catch (err: any) {
       console.error('Failed to fetch attendance:', err.message);
     }
   };
+  
   
   
 
