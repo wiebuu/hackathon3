@@ -1,6 +1,5 @@
-// LectureDetails.tsx
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, CheckCircle2, XCircle, ArrowLeft, Eye, Clock } from 'lucide-react';
@@ -20,16 +19,8 @@ const LectureDetails = () => {
   const { toast } = useToast();
   const lecture = state?.lecture;
 
-  const [students, setStudents] = useState<Student[]>([
-    { id: 'ST2024001', name: 'Alex Johnson', status: 'absent' },
-    { id: 'ST2024002', name: 'Sarah Williams', status: 'absent' },
-    { id: 'ST2024003', name: 'Mike Chen', status: 'absent' },
-    { id: 'ST2024004', name: 'Emma Davis', status: 'absent' },
-    { id: 'ST2024005', name: 'David Brown', status: 'absent' },
-  ]);
-
-  // Generate QR code value (lecture ID + timestamp)
-  const qrValue = JSON.stringify({ lectureId: lecture?.id, timestamp: Date.now() });
+  const [students, setStudents] = useState<Student[]>([]);
+  const [qrValue, setQrValue] = useState('');
 
   const getStatusBadge = (status: Student['status']) => {
     switch (status) {
@@ -56,6 +47,46 @@ const LectureDetails = () => {
     });
   };
 
+  // Fetch attendance from backend
+  const fetchAttendance = async () => {
+    try {
+      const res = await fetch('http://localhost:9000/api/attendance');
+      const data = await res.json();
+
+      if (Array.isArray(data)) {
+        const fetchedStudents: Student[] = data.map((r: any) => ({
+          id: r.studentId,
+          name: r.studentName,
+          status: r.status,
+          time: r.time,
+        }));
+
+        setStudents(fetchedStudents);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch attendance:', err.message);
+    }
+  };
+
+  // Refresh QR and attendance every 5 seconds
+  useEffect(() => {
+    fetchAttendance(); // Initial fetch
+    const interval = setInterval(() => {
+      // Update QR with timestamp to change every 5s
+      setQrValue(JSON.stringify({ lectureId: lecture?.id, timestamp: new Date().getTime() }));
+
+      // Refresh attendance list
+      fetchAttendance();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [lecture]);
+
+  // Set initial QR
+  useEffect(() => {
+    setQrValue(JSON.stringify({ lectureId: lecture?.id, timestamp: new Date().getTime() }));
+  }, [lecture]);
+
   return (
     <div className="container mx-auto p-6 space-y-10 animate-fade-in font-sans">
       {/* Top Bar */}
@@ -67,12 +98,12 @@ const LectureDetails = () => {
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
         <div className="text-right">
-          <h1 className="text-2xl font-semibold">{lecture?.subject}</h1>
+          <h1 className="text-2xl font-semibold">{lecture?.subject || 'Mathematics'}</h1>
           <p className="text-sm text-muted-foreground flex items-center gap-4 mt-1 justify-end">
             <span className="flex items-center gap-1">
-              <Clock className="h-4 w-4" /> {lecture?.time}
+              <Clock className="h-4 w-4" /> {lecture?.time || '09:00 AM'}
             </span>
-            <span>{lecture?.room}</span>
+            <span>{lecture?.room || 'Room 101'}</span>
           </p>
         </div>
       </div>
@@ -102,7 +133,7 @@ const LectureDetails = () => {
         </Card>
       </div>
 
-      {/* QR Code Display */}
+      {/* QR Code & Attendance List */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-0 shadow-md">
         <CardContent className="flex flex-col md:flex-row gap-10 p-8 items-center justify-center">
           <div className="flex flex-col justify-center items-center gap-6">

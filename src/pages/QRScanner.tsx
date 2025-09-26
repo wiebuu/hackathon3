@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, CheckCircle2, QrCode, RefreshCw } from 'lucide-react';
+import { CheckCircle2, QrCode, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import QrScanner from 'react-qr-scanner';
 
@@ -12,36 +12,57 @@ const QRScanner = () => {
   const [isScanned, setIsScanned] = useState(false);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
 
-  const handleScan = (result: any) => {
+  const handleScan = async (result: any) => {
     if (result?.text && !isScanned) {
       setIsScanned(true);
 
       try {
-        const parsed = JSON.parse(result.text);
+        let studentId: string | null = null;
+        let studentName: string | null = null;
 
-        const attendanceData = {
-          date: new Date().toISOString().split('T')[0],
-          time: new Date().toLocaleTimeString(),
-          status: 'present',
-          studentId: localStorage.getItem('studentId'),
-          studentName: localStorage.getItem('userName'),
-          lectureId: parsed.lectureId,
-        };
+        // Try parsing JSON
+        try {
+          const parsed = JSON.parse(result.text);
+          if (parsed.studentId && parsed.studentName) {
+            studentId = parsed.studentId;
+            studentName = parsed.studentName;
+          } else {
+            throw new Error("Not a student QR");
+          }
+        } catch {
+          // Fallback: plain string QR
+          studentId = result.text;
+          studentName = localStorage.getItem('userName') || 'Student';
+        }
 
-        const existing = JSON.parse(localStorage.getItem('attendanceHistory') || '[]');
-        existing.push(attendanceData);
-        localStorage.setItem('attendanceHistory', JSON.stringify(existing));
+        if (!studentId || !studentName) throw new Error("Invalid QR code format");
 
-        toast({
-          title: 'Attendance Marked!',
-          description: 'You have been marked present.',
+        // Send attendance to backend
+        const response = await fetch("http://localhost:9000/api/attendance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId, studentName }),
         });
 
-        setTimeout(() => navigate('/dashboard'), 2000);
-      } catch (err) {
+        const data = await response.json();
+
+        if (data.success) {
+          toast({
+            title: 'Attendance Marked!',
+            description: `You have been marked present.`,
+          });
+
+          // Show success briefly, then navigate back to dashboard
+          setTimeout(() => navigate('/dashboard'), 1500);
+
+        } else {
+          throw new Error(data.message || "Failed to mark attendance");
+        }
+      } catch (err: any) {
+        console.error(err);
         toast({
-          title: 'Invalid QR Code',
-          description: 'This QR could not be processed.',
+          title: 'Error',
+          description: err.message || 'Invalid QR code',
           variant: 'destructive',
         });
         setIsScanned(false);
@@ -51,14 +72,13 @@ const QRScanner = () => {
 
   const handleError = (err: any) => {
     console.error(err);
-
     if (err.name === "OverconstrainedError") {
       toast({
         title: 'Back camera not available',
         description: 'Switching to front camera automatically.',
         variant: 'destructive',
       });
-      setFacingMode("user"); // fallback
+      setFacingMode("user");
     } else {
       toast({
         title: 'Camera Error',
@@ -68,66 +88,21 @@ const QRScanner = () => {
     }
   };
 
-  if (isScanned) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4 animate-fade-in">
-        <Card className="w-full max-w-md card-modern shadow-xl">
-          <CardContent className="text-center p-8">
-            <div className="mb-8">
-              <div className="p-6 bg-success/10 rounded-2xl inline-block mb-6">
-                <CheckCircle2 className="h-24 w-24 text-success" />
-              </div>
-              <h2 className="text-3xl font-[Poppins-Bold] text-success mb-3">
-                Attendance Marked Successfully!
-              </h2>
-              <p className="text-muted-foreground text-lg">
-                You have been marked present for today&apos;s class.
-              </p>
-            </div>
-            <div className="bg-gradient-card rounded-xl p-6 mb-8 shadow-medium">
-              <p className="text-sm text-muted-foreground mb-2">
-                <span className="font-semibold">Time:</span> {new Date().toLocaleTimeString()}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold">Date:</span> {new Date().toLocaleDateString()}
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-              <p>Redirecting to dashboard...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-card/80 backdrop-blur-md border-b border-border/50 p-6 shadow-soft">
-        <div className="flex items-center gap-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-3 hover-lift"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            Back to Dashboard
-          </Button>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <QrCode className="h-6 w-6 text-primary" />
-            </div>
-            <h1 className="text-2xl font-[Poppins-Bold] text-gradient-primary">
-              QR Code Scanner
-            </h1>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <QrCode className="h-6 w-6 text-primary" />
           </div>
+          <h1 className="text-2xl font-[Poppins-Bold] text-gradient-primary">
+            QR Code Scanner
+          </h1>
         </div>
       </div>
 
-      {/* Scanner Interface */}
+      {/* Scanner */}
       <div className="flex items-center justify-center min-h-[calc(100vh-100px)] p-4 lg:p-6">
         <Card className="w-full max-w-md lg:max-w-lg card-modern shadow-xl">
           <CardHeader className="text-center pb-6">
@@ -142,18 +117,13 @@ const QRScanner = () => {
             </p>
           </CardHeader>
           <CardContent className="p-8 space-y-8">
-            {/* Real QR Scanner */}
             <div className="relative rounded-xl overflow-hidden shadow-medium">
               <QrScanner
                 delay={300}
                 style={{ width: '100%' }}
                 onError={handleError}
                 onScan={handleScan}
-                constraints={{
-                  video: {
-                    facingMode: { ideal: facingMode }, // prefer chosen camera
-                  }
-                }}
+                constraints={{ video: { facingMode: { ideal: facingMode } } }}
               />
             </div>
             <div className="flex justify-center">
@@ -175,9 +145,26 @@ const QRScanner = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Success overlay */}
+      {isScanned && (
+        <div className="absolute inset-0 bg-black/30 flex items-center justify-center p-4 animate-fade-in">
+          <Card className="w-full max-w-md card-modern shadow-xl">
+            <CardContent className="text-center p-8">
+              <div className="mb-8">
+                <div className="p-6 bg-success/10 rounded-2xl inline-block mb-6">
+                  <CheckCircle2 className="h-24 w-24 text-success" />
+                </div>
+                <h2 className="text-3xl font-[Poppins-Bold] text-success mb-3">
+                  Attendance Marked Successfully!
+                </h2>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
 
 export default QRScanner;
-
