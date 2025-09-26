@@ -9,6 +9,7 @@ import QRScanner from "./pages/QRScanner";
 import NotFound from "./pages/NotFound";
 import LectureDetails from "./components/LectureDetails";
 import SignUp from "./pages/SignUp";
+import PersonalizedTasks from "./components/PersonalizedTasks";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +25,8 @@ const App = () => (
           <Route path="/qr-scanner" element={<QRScanner />} />
           <Route path="/lecture/:id" element={<LectureDetails />} />
           <Route path="/signup" element={<SignUp />} />
-          
+          <Route path="/personalized-tasks" element={<PersonalizedTasks />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

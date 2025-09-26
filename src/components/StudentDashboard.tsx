@@ -273,7 +273,22 @@ const StudentDashboard = () => {
 
         {/* Main Content */}
         <div className="xl:col-span-2 space-y-6 lg:space-y-8">
-          {/* Schedule */}
+              {/* Personalized Tasks */}
+      {/* Personalized Tasks Option */}
+<Card className="card-modern hover-lift font-[Poppins-Light] animate-slide-up cursor-pointer"
+      onClick={() => navigate('/personalized-tasks')}>
+  <CardHeader className="pb-4">
+    <CardTitle className="flex items-center gap-3 text-2xl">
+      <div className="p-2 bg-primary/10 rounded-lg">
+        <Target className="h-6 w-6 text-primary" />
+      </div>
+      Personalized Tasks for Free Time
+    </CardTitle>
+    <p className="text-muted-foreground text-base">
+      Click to view AI-generated tasks for your schedule
+    </p>
+  </CardHeader>
+</Card>
           <Card className="card-modern hover-lift font-[Poppins-Light] animate-slide-up">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-3 text-2xl">
@@ -308,35 +323,7 @@ const StudentDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Tasks */}
-          <Card className="font-[Poppins-Light] card-modern hover-lift animate-slide-up">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-3 text-2xl">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Target className="h-6 w-6 text-primary" />
-                </div>
-                Personalized Tasks
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {tasks.map(task => (
-                <div key={task.id} className="flex items-center gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-all duration-300 hover-lift">
-                  <div className={`w-2 h-16 rounded-full ${getPriorityColor(task.priority)} shadow-soft`}></div>
-                  <div className="p-3 bg-primary/10 rounded-xl">
-                    <task.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-lg mb-2">{task.title}</h4>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="text-xs px-3 py-1">{task.type}</Badge>
-                      <span className="text-sm text-muted-foreground flex items-center gap-2"><Clock className="h-4 w-4" />{task.duration}</span>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="outline" className="hover-lift">Start</Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          
         </div>
       </div>
 
