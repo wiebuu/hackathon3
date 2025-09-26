@@ -38,7 +38,7 @@ const QRScanner = () => {
         if (!studentId || !studentName) throw new Error("Invalid QR code format");
   
         // Send attendance to backend
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/attendance`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}api/attendance`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ studentId, studentName }),
