@@ -15,11 +15,11 @@ const QRScanner = () => {
   const handleScan = async (result: any) => {
     if (result?.text && !isScanned) {
       setIsScanned(true);
-
+  
       try {
         let studentId: string | null = null;
         let studentName: string | null = null;
-
+  
         // Try parsing JSON
         try {
           const parsed = JSON.parse(result.text);
@@ -34,27 +34,27 @@ const QRScanner = () => {
           studentId = result.text;
           studentName = localStorage.getItem('userName') || 'Student';
         }
-
+  
         if (!studentId || !studentName) throw new Error("Invalid QR code format");
-
+  
         // Send attendance to backend
-        const response = await fetch("http://localhost:9000/api/attendance", {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/attendance`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ studentId, studentName }),
         });
-
+  
         const data = await response.json();
-
+  
         if (data.success) {
           toast({
             title: 'Attendance Marked!',
             description: `You have been marked present.`,
           });
-
+  
           // Show success briefly, then navigate back to dashboard
           setTimeout(() => navigate('/dashboard'), 1500);
-
+  
         } else {
           throw new Error(data.message || "Failed to mark attendance");
         }
@@ -69,6 +69,7 @@ const QRScanner = () => {
       }
     }
   };
+  
 
   const handleError = (err: any) => {
     console.error(err);

@@ -47,12 +47,11 @@ const LectureDetails = () => {
     });
   };
 
-  // Fetch attendance from backend
   const fetchAttendance = async () => {
     try {
-      const res = await fetch('http://localhost:9000/api/attendance');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/attendance`);
       const data = await res.json();
-
+  
       if (Array.isArray(data)) {
         const fetchedStudents: Student[] = data.map((r: any) => ({
           id: r.studentId,
@@ -60,13 +59,14 @@ const LectureDetails = () => {
           status: r.status,
           time: r.time,
         }));
-
+  
         setStudents(fetchedStudents);
       }
     } catch (err: any) {
       console.error('Failed to fetch attendance:', err.message);
     }
   };
+  
 
   // Refresh QR and attendance every 5 seconds
   useEffect(() => {
