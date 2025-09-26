@@ -2,21 +2,21 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, CheckCircle2, QrCode } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, QrCode, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import QrScanner from 'react-qr-scanner'; // ✅ correct package
+import QrScanner from 'react-qr-scanner';
 
 const QRScanner = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isScanned, setIsScanned] = useState(false);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
 
   const handleScan = (result: any) => {
     if (result?.text && !isScanned) {
       setIsScanned(true);
 
       try {
-        // teacher's QR encodes lectureId & timestamp
         const parsed = JSON.parse(result.text);
 
         const attendanceData = {
@@ -28,7 +28,6 @@ const QRScanner = () => {
           lectureId: parsed.lectureId,
         };
 
-        // Save locally (demo mode)
         const existing = JSON.parse(localStorage.getItem('attendanceHistory') || '[]');
         existing.push(attendanceData);
         localStorage.setItem('attendanceHistory', JSON.stringify(existing));
@@ -52,11 +51,21 @@ const QRScanner = () => {
 
   const handleError = (err: any) => {
     console.error(err);
-    toast({
-      title: 'Camera Error',
-      description: 'Unable to access camera. Check permissions.',
-      variant: 'destructive',
-    });
+
+    if (err.name === "OverconstrainedError") {
+      toast({
+        title: 'Back camera not available',
+        description: 'Switching to front camera automatically.',
+        variant: 'destructive',
+      });
+      setFacingMode("user"); // fallback
+    } else {
+      toast({
+        title: 'Camera Error',
+        description: 'Unable to access camera. Check permissions.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (isScanned) {
@@ -136,11 +145,27 @@ const QRScanner = () => {
             {/* Real QR Scanner */}
             <div className="relative rounded-xl overflow-hidden shadow-medium">
               <QrScanner
-                delay={300}            // scan every 300ms
+                delay={300}
                 style={{ width: '100%' }}
                 onError={handleError}
                 onScan={handleScan}
+                constraints={{
+                  video: {
+                    facingMode: { ideal: facingMode }, // prefer chosen camera
+                  }
+                }}
               />
+            </div>
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFacingMode(facingMode === "user" ? "environment" : "user")}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Switch Camera
+              </Button>
             </div>
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
@@ -155,3 +180,4 @@ const QRScanner = () => {
 };
 
 export default QRScanner;
+
